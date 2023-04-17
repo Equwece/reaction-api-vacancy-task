@@ -52,3 +52,4 @@ data ReactionInput = ReactionInput
     catalysts :: [(ACCELERATE, CatalystOrUUID)]
   }
   deriving (Show, Eq)
+

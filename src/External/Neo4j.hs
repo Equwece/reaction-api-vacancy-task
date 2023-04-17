@@ -3,7 +3,19 @@
 
 module External.Neo4j where
 
-import API.Models (ACCELERATE (ACCELERATE, catalyst, pressure, temperature), Catalyst (Catalyst, name, smiles), CatalystOrUUID (C, CU), Molecule (Molecule, iupacName, smiles), MoleculeOrUUID (M, MU), PRODUCT_FROM (PRODUCT_FROM, amount), REAGENT_IN, Reaction (Reaction, name), ReactionInput (ReactionInput, catalysts, product, reaction, reagents))
+import API.Models
+  ( ACCELERATE (ACCELERATE, catalyst, pressure, reaction, temperature),
+    CatalystOrUUID (C, CU),
+    MoleculeOrUUID (M, MU),
+    PRODUCT_FROM (PRODUCT_FROM, amount, inputEntity, outputEntity),
+    ReactionInput
+      ( ReactionInput,
+        catalysts,
+        product,
+        reaction,
+        reagents
+      ),
+  )
 import Control.Monad (forM, forM_)
 import Control.Monad.Except ()
 import Data.Default ()
@@ -11,13 +23,13 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Data.UUID (UUID, fromString, toString)
 import Database.Bolt (BoltActionT, Pipe, at, props, query, queryP, queryP_, query_, run, (=:))
-import External.Interfaces (Neo4jConn (createCatalystNode, createMoleculeNode, createReaction, createReactionNode))
+import External.Interfaces (Neo4jConn (..), ReactionElement (getCreateQueryProps, getCreateQueryText))
 
 newtype Neo4jDB = Neo4jDB {boltPipe :: Pipe}
 
 instance Neo4jConn Neo4jDB where
   createReaction db (ReactionInput {..}) = do
-    reactionUuid <- createReactionNode db reaction
+    reactionUuid <- createNode db reaction
     let processReagent = processComponentMolecule queryStr
           where
             queryStr =
@@ -30,7 +42,7 @@ instance Neo4jConn Neo4jDB where
               \CREATE (react)-[r:PRODUCT_FROM {amount: {amount}}]->(mol)"
         processComponentMolecule queryStr (PRODUCT_FROM {..}, moleculeOrId) reactId = do
           maybeMoleculeId <- case moleculeOrId of
-            M molecule -> createMoleculeNode db molecule
+            M molecule -> createNode db molecule
             MU mId -> return (Just mId)
           case maybeMoleculeId of
             Just moleculeId -> do
@@ -42,7 +54,7 @@ instance Neo4jConn Neo4jDB where
             Nothing -> return ()
         processCatalyst (ACCELERATE {..}, catalystOrId) reactId = do
           maybeCatalystId <- case catalystOrId of
-            C catalyst -> createCatalystNode db catalyst
+            C catalyst -> createNode db catalyst
             CU cId -> return (Just cId)
           case maybeCatalystId of
             Just catalystId -> do
@@ -66,31 +78,9 @@ instance Neo4jConn Neo4jDB where
         forM_ catalysts (`processCatalyst` rId)
       Nothing -> return ()
 
-  createReactionNode db Reaction {..} = do
+  createNode db label = do
     let createNodeQuery = do
-          records <- queryP "CREATE (r:Reaction {name: {name}, id: randomUUID()}) RETURN r.id" (props ["name" =: name])
-          forM records $ \record -> record `at` "r.id" :: BoltActionT IO Text
-
-    result <- run (boltPipe db) createNodeQuery
-    unpackUUID result
-
-  createMoleculeNode db Molecule {..} = do
-    let createNodeQuery = do
-          records <-
-            queryP
-              "CREATE (r:Molecule {iupacName: {iupacName}, smiles: {smiles}, id: randomUUID()}) RETURN r.id"
-              (props ["iupacName" =: iupacName, "smiles" =: smiles])
-          forM records $ \record -> record `at` "r.id" :: BoltActionT IO Text
-
-    result <- run (boltPipe db) createNodeQuery
-    unpackUUID result
-
-  createCatalystNode db Catalyst {..} = do
-    let createNodeQuery = do
-          records <-
-            queryP
-              "CREATE (r:Catalyst {name: {name}, smiles: {smiles}, id: randomUUID()}) RETURN r.id"
-              (props ["name" =: name, "smiles" =: smiles])
+          records <- queryP (getCreateQueryText label) (getCreateQueryProps label)
           forM records $ \record -> record `at` "r.id" :: BoltActionT IO Text
     result <- run (boltPipe db) createNodeQuery
     unpackUUID result
