@@ -8,6 +8,7 @@ import API.Models
     CatalystOrUUID (C, CU),
     MoleculeOrUUID (M, MU),
     PRODUCT_FROM (PRODUCT_FROM, amount, inputEntity, outputEntity),
+    Reaction (Reaction),
     ReactionInput
       ( ReactionInput,
         catalysts,
@@ -22,7 +23,7 @@ import Data.Default ()
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.UUID (UUID, fromString, toString)
-import Database.Bolt (BoltActionT, Pipe, at, props, query, queryP, queryP_, query_, run, (=:))
+import Database.Bolt (BoltActionT, Node (nodeProps), Pipe, at, props, query, queryP, queryP_, query_, run, (=:))
 import External.Interfaces (Neo4jConn (..), ReactionElement (getCreateQueryProps, getCreateQueryText))
 
 newtype Neo4jDB = Neo4jDB {boltPipe :: Pipe}
@@ -84,6 +85,21 @@ instance Neo4jConn Neo4jDB where
           forM records $ \record -> record `at` "r.id" :: BoltActionT IO Text
     result <- run (boltPipe db) createNodeQuery
     unpackUUID result
+
+  getReactionNodeById db reactionId = do
+    let getReactionQuery = do
+          records <- queryP "MATCH (r:Reaction) WHERE r.id = {rId} RETURN r" (props ["rId" =: toString reactionId])
+          nodes <- forM records $ \record -> record `at` "r"
+          forM nodes genReaction
+        genReaction node = do
+          rName <- T.unpack <$> nodeProps node `at` "name"
+          rId <- fromString . T.unpack <$> nodeProps node `at` "id"
+          return $ Reaction rId rName
+
+    reactList <- run (boltPipe db) getReactionQuery
+    if null reactList
+      then return Nothing
+      else return . Just $ head reactList
 
 unpackUUID :: [Text] -> IO (Maybe UUID)
 unpackUUID result = do

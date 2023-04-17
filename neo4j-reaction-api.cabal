@@ -42,6 +42,7 @@ executable neo4j-reaction-api
     fast-logger,
     mtl,
     data-default,
+    uuid,
     neo4j-reaction-api
   hs-source-dirs:   app
   default-language: Haskell2010

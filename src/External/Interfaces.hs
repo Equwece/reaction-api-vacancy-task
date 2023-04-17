@@ -21,6 +21,7 @@ newtype Logger = Logger {logMsg :: String -> IO ()}
 class Neo4jConn a where
   createReaction :: a -> ReactionInput -> IO ()
   createNode :: (ReactionElement label) => a -> label -> IO (Maybe UUID)
+  getReactionNodeById :: a-> UUID -> IO (Maybe Reaction)
 
 class ReactionElement b where
   getCreateQueryProps :: b -> Map Text Value

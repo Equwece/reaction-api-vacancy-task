@@ -9,8 +9,9 @@ import Control.Monad.Except ()
 import Data.Default (Default (def))
 import qualified Data.Text as T
 import Data.Time (getCurrentTime)
+import Data.UUID
 import Database.Bolt (BoltCfg (host, password, port, user), connect)
-import External.Interfaces (AppEnvironment (..), Logger (Logger, logMsg), Neo4jConn (createReaction))
+import External.Interfaces (AppEnvironment (..), Logger (Logger, logMsg), Neo4jConn (createReaction, getReactionNodeById))
 import External.Neo4j (Neo4jDB (Neo4jDB))
 import External.Settings (Settings (..))
 import System.Environment (getEnv)
