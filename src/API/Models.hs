@@ -20,17 +20,35 @@ data Reaction = Reaction
 data Catalyst = Catalyst
   { id :: Maybe UUID,
     smiles :: String,
-    names :: Maybe String
+    name :: Maybe String
   }
   deriving (Show, Eq)
 
-newtype PRODUCT_FROM = PRODUCT_FROM
-  { amount :: Float
+data PRODUCT_FROM = PRODUCT_FROM
+  { amount :: Float,
+    inputEntity :: Maybe UUID,
+    outputEntity :: Maybe UUID
   }
   deriving (Show, Eq)
 
-data ACCELERATE = ACCELERATE 
+type REAGENT_IN = PRODUCT_FROM
+
+data ACCELERATE = ACCELERATE
   { temperature :: Float,
-    pressure :: Float
+    pressure :: Float,
+    catalyst :: Maybe UUID,
+    reaction :: Maybe UUID
+  }
+  deriving (Show, Eq)
+
+data MoleculeOrUUID = M Molecule | MU UUID deriving (Show, Eq)
+
+data CatalystOrUUID = C Catalyst | CU UUID deriving (Show, Eq)
+
+data ReactionInput = ReactionInput
+  { reaction :: Reaction,
+    reagents :: [(REAGENT_IN, MoleculeOrUUID)],
+    product :: (PRODUCT_FROM, MoleculeOrUUID),
+    catalysts :: [(ACCELERATE, CatalystOrUUID)]
   }
   deriving (Show, Eq)
