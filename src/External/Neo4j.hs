@@ -18,13 +18,15 @@ import API.Models
       ),
   )
 import Control.Monad (forM, forM_)
-import Control.Monad.Except ()
+import Control.Monad.Trans.Maybe (MaybeT (MaybeT, runMaybeT))
 import Data.Default ()
+import Data.Map (insert)
 import Data.Text (Text)
 import qualified Data.Text as T
-import Data.UUID (UUID, fromString, toString)
-import Database.Bolt (BoltActionT, Node (nodeProps), Pipe, at, props, query, queryP, queryP_, query_, run, (=:))
-import External.Interfaces (Neo4jConn (..), ReactionElement (getCreateQueryProps, getCreateQueryText))
+import Data.UUID (UUID, fromString, nil, toString)
+import Data.UUID.V4 (nextRandom)
+import Database.Bolt (BoltActionT, Node (nodeProps), Pipe, Value (T), at, props, queryP, queryP_, run, (=:))
+import External.Interfaces (Neo4jConn (..), ReactionElement (getCheckExistsQueryText, getCreateQueryProps, getCreateQueryText, getElementId))
 
 newtype Neo4jDB = Neo4jDB {boltPipe :: Pipe}
 
@@ -77,14 +79,39 @@ instance Neo4jConn Neo4jDB where
         forM_ reagents (`processReagent` rId)
         processProduct product rId
         forM_ catalysts (`processCatalyst` rId)
-      Nothing -> return ()
+        return rId
+      Nothing -> return nil
 
-  createNode db label = do
-    let createNodeQuery = do
-          records <- queryP (getCreateQueryText label) (getCreateQueryProps label)
+  createNode db element = do
+    predefinedId <- case getElementId element of
+      Just elId ->
+        runMaybeT $ checkIdExists db element elId
+      Nothing -> return Nothing
+    newUUID <- nextRandom
+    let queryProps = case predefinedId of
+          Just elId -> insert (T.pack "id") (T . T.pack . toString $ elId) (getCreateQueryProps element)
+          Nothing -> insert (T.pack "id") (T . T.pack . toString $ newUUID) (getCreateQueryProps element)
+        createNodeQuery = do
+          records <- queryP (getCreateQueryText element) queryProps
           forM records $ \record -> record `at` "r.id" :: BoltActionT IO Text
     result <- run (boltPipe db) createNodeQuery
     unpackUUID result
+    where
+      checkIdExists d e eId = MaybeT $ do
+        res <- checkNodeExistsById d e eId
+        if res
+          then return Nothing
+          else return $ Just eId
+
+  checkNodeExistsById db element elementId = do
+    let checkQuery = do
+          records <-
+            queryP (getCheckExistsQueryText element) (props ["elId" =: toString elementId])
+          forM records $ \record -> record `at` "node_exists" :: BoltActionT IO Bool
+    checkResult <- run (boltPipe db) checkQuery
+    if null checkResult
+      then return False
+      else return . head $ checkResult
 
   getReactionNodeById db reactionId = do
     let getReactionQuery = do

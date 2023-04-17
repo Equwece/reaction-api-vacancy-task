@@ -39,7 +39,7 @@ testScript :: AppEnvironment -> IO ()
 testScript AppEnvironment {..} = do
   let react1 =
         ReactionInput
-          { reaction = Reaction {name = "react1", id = Nothing},
+          { reaction = Reaction {name = "react1", id = fromString "b86943c9-264d-4181-bda7-4830fd650527"},
             reagents =
               [ ( PRODUCT_FROM {amount = 50.3, inputEntity = Nothing, outputEntity = Nothing},
                   M (Molecule {id = Nothing, smiles = "mol1_smile", iupacName = "mol1_iupac"})
@@ -58,7 +58,8 @@ testScript AppEnvironment {..} = do
                 )
               ]
           }
-  createReaction db react1
+  newReactId <- createReaction db react1
+  return ()
 
 loadSettings :: IO Settings
 loadSettings = do
