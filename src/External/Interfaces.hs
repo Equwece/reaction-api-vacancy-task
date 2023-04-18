@@ -4,7 +4,7 @@
 
 module External.Interfaces where
 
-import API.Models (Catalyst (Catalyst, id, name, smiles), Molecule (Molecule, id, iupacName, smiles), Reaction (Reaction, id, name), ReactionInput)
+import API.Models (Catalyst (Catalyst, id, name, smiles), Molecule (Molecule, id, iupacName, smiles), Reaction (Reaction, id, name), ReactionInput, PathNode)
 import Data.Map
 import Data.Text (Text)
 import Data.UUID (UUID)
@@ -18,6 +18,7 @@ class Neo4jConn a where
   createReaction :: AppEnvironment a -> ReactionInput -> IO UUID
   createNode :: (ReactionElement element) => AppEnvironment a -> element -> IO (Maybe UUID)
   getReactionNodeById :: AppEnvironment a -> UUID -> IO (Maybe Reaction)
+  getPath :: AppEnvironment a -> UUID -> UUID -> IO [[PathNode]]
   checkNodeExistsById :: (ReactionElement element) => AppEnvironment a -> element -> UUID -> IO Bool
 
 class ReactionElement b where

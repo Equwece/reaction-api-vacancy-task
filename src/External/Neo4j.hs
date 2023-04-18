@@ -8,6 +8,7 @@ import API.Models
     CatalystOrUUID (C, CU),
     MoleculeOrUUID (M, MU),
     PRODUCT_FROM (PRODUCT_FROM, amount, inputEntity, outputEntity),
+    PathNode (PathNode),
     Reaction (Reaction),
     ReactionInput
       ( ReactionInput,
@@ -17,15 +18,16 @@ import API.Models
         reagents
       ),
   )
-import Control.Monad (forM, forM_)
+import Control.Monad (forM, forM_, (>=>))
 import Control.Monad.Trans.Maybe (MaybeT (MaybeT, runMaybeT))
 import Data.Default ()
 import Data.Map (insert)
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.UUID (UUID, fromString, nil, toString)
 import Data.UUID.V4 (nextRandom)
-import Database.Bolt (BoltActionT, Node (nodeProps), Pipe, Value (T), at, props, queryP, queryP_, run, (=:))
+import Database.Bolt (BoltActionT, Node (labels, nodeProps), Path (pathNodes), Pipe, Value (T), at, props, queryP, queryP_, run, (=:))
 import External.Interfaces (AppEnvironment (AppEnvironment, db, logger), Logger (logMsg), Neo4jConn (..), ReactionElement (getCheckExistsQueryText, getCreateQueryProps, getCreateQueryText, getElementId))
 
 newtype Neo4jDB = Neo4jDB {boltPipe :: Pipe}
@@ -81,6 +83,25 @@ instance Neo4jConn Neo4jDB where
         forM_ catalysts (`processCatalyst` rId)
         return rId
       Nothing -> return nil
+
+  getPath appEnv@AppEnvironment {..} id1 id2 = do
+    let findShortestPathQuery = do
+          records <-
+            queryP
+              "MATCH paths = allShortestPaths( (a:Molecule)-[:REAGENT_IN|:PRODUCT_FROM*..]->(b:Molecule) )\
+              \WHERE a.id = {aId} AND b.id = {bId}\
+              \RETURN paths"
+              (props ["aId" =: toString id1, "bId" =: toString id2])
+          pathNodeList <- forM records $ \record -> pathNodes <$> record `at` "paths" :: BoltActionT IO [Node]
+          forM pathNodeList (`forM` processNodes)
+
+        processNodes node = do
+          rId <- fromString . T.unpack <$> nodeProps node `at` "id"
+          let nodeLabel = T.unpack . head . labels $ node
+              nodeId = fromMaybe nil rId
+          return $ PathNode nodeLabel nodeId
+
+    run (boltPipe db) findShortestPathQuery
 
   createNode appEnv@(AppEnvironment {..}) element = do
     predefinedId <- case getElementId element of

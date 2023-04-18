@@ -55,5 +55,7 @@ data ReactionInput = ReactionInput
   }
   deriving (Show, Eq)
 
+data PathNode = PathNode {label :: String, id :: UUID} deriving (Show, Eq)
+
 getCatalystId :: Catalyst -> Maybe UUID
 getCatalystId Catalyst {..} = id

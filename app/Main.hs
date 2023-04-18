@@ -9,9 +9,9 @@ import Control.Monad.Except ()
 import Data.Default (Default (def))
 import qualified Data.Text as T
 import Data.Time (diffUTCTime, getCurrentTime)
-import Data.UUID
+import Data.UUID (fromString)
 import Database.Bolt (BoltCfg (host, password, port, user), connect)
-import External.Interfaces (AppEnvironment (..), Logger (Logger, logMsg), Neo4jConn (createReaction, getReactionNodeById))
+import External.Interfaces (AppEnvironment (..), Logger (Logger, logMsg), Neo4jConn (createReaction, getPath, getReactionNodeById))
 import External.Neo4j (Neo4jDB (Neo4jDB))
 import External.Settings (Settings (..))
 import Script (setupDB)
@@ -60,7 +60,15 @@ testScript appEnv@AppEnvironment {..} = do
               ]
           }
   startTime <- getCurrentTime
-  setupDB appEnv
+  -- setupDB appEnv
+  let maybeIds = do
+        id1 <- fromString "0636aeb3-56af-4097-8749-ab22e8675248"
+        id2 <- fromString "d633261f-53f4-40cc-b3b1-b128763edad3"
+        Just (id1, id2)
+  case maybeIds of
+    Just (id1, id2) -> do
+      pathNodeList <- getPath appEnv id1 id2
+      logMsg logger (show pathNodeList)
   finishTime <- getCurrentTime
   logMsg logger ("Work time: " ++ show (diffUTCTime finishTime startTime))
 
