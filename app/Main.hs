@@ -7,6 +7,7 @@ import Configuration.Dotenv (defaultConfig, loadFile)
 import Control.Monad (forM_, (>=>))
 import Control.Monad.Except ()
 import Data.Default (Default (def))
+import Data.Text (pack)
 import qualified Data.Text as T
 import Data.Time (diffUTCTime, getCurrentTime)
 import Data.UUID (fromString)
@@ -40,22 +41,22 @@ testScript :: Neo4jConn a => AppEnvironment a -> IO ()
 testScript appEnv@AppEnvironment {..} = do
   let react1 =
         ReactionInput
-          { reaction = Reaction {name = "react1", id = fromString "b86943c9-264d-4181-bda7-4830fd650527"},
+          { reaction = Reaction {name = pack "react1", id = fromString "b86943c9-264d-4181-bda7-4830fd650527"},
             reagents =
               [ ( PRODUCT_FROM {amount = 50.3, inputEntity = Nothing, outputEntity = Nothing},
-                  M (Molecule {id = Nothing, smiles = "mol1_smile", iupacName = "mol1_iupac"})
+                  M (Molecule {id = Nothing, smiles = pack "mol1_smile", iupacName = pack "mol1_iupac"})
                 ),
                 ( PRODUCT_FROM {amount = 40.8, inputEntity = Nothing, outputEntity = Nothing},
-                  M (Molecule {id = Nothing, smiles = "mol2_smile", iupacName = "mol2_iupac"})
+                  M (Molecule {id = Nothing, smiles = pack "mol2_smile", iupacName = pack "mol2_iupac"})
                 )
               ],
             product =
               ( PRODUCT_FROM {amount = 10.8, inputEntity = Nothing, outputEntity = Nothing},
-                M (Molecule {id = Nothing, smiles = "mol3_smile", iupacName = "mol3_iupac"})
+                M (Molecule {id = Nothing, smiles = pack "mol3_smile", iupacName = pack "mol3_iupac"})
               ),
             catalysts =
               [ ( ACCELERATE {temperature = 5.0, pressure = 6.0, catalyst = Nothing, reaction = Nothing},
-                  C Catalyst {id = Nothing, smiles = "cat1_smile", name = Just "cat1"}
+                  C Catalyst {id = Nothing, smiles = pack "cat1_smile", name = Just . pack $ "cat1"}
                 )
               ]
           }

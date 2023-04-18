@@ -3,26 +3,27 @@
 
 module API.Models where
 
+import Data.Text (Text)
 import Data.UUID (UUID)
 import Prelude hiding (id)
 
 data Molecule = Molecule
   { id :: Maybe UUID,
-    smiles :: String,
-    iupacName :: String
+    smiles :: Text,
+    iupacName :: Text
   }
   deriving (Show, Eq)
 
 data Reaction = Reaction
   { id :: Maybe UUID,
-    name :: String
+    name :: Text
   }
   deriving (Show, Eq)
 
 data Catalyst = Catalyst
   { id :: Maybe UUID,
-    smiles :: String,
-    name :: Maybe String
+    smiles :: Text,
+    name :: Maybe Text
   }
   deriving (Show, Eq)
 
@@ -55,7 +56,7 @@ data ReactionInput = ReactionInput
   }
   deriving (Show, Eq)
 
-data PathNode = PathNode {label :: String, id :: UUID} deriving (Show, Eq)
+data PathNode = PathNode {label :: Text, id :: UUID} deriving (Show, Eq)
 
 getCatalystId :: Catalyst -> Maybe UUID
 getCatalystId Catalyst {..} = id

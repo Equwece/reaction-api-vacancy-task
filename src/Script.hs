@@ -18,7 +18,8 @@ import API.Models
 import Control.Monad (forM, forM_, (>=>))
 import Data.Fixed (mod')
 import Data.Maybe (fromMaybe)
-import Data.UUID (nil, toString)
+import Data.Text (pack)
+import Data.UUID (nil, toText)
 import Data.UUID.V4 (nextRandom)
 import External.Interfaces (AppEnvironment (AppEnvironment, db), Neo4jConn (createNode, createReaction))
 import System.Random (randomIO)
@@ -78,21 +79,21 @@ class GenRandomElement a where
 instance GenRandomElement Reaction where
   genRandom = do
     rId <- nextRandom
-    let name = "name " ++ toString rId
+    let name = "name " <> toText rId
     return $ Reaction (Just rId) name
 
 instance GenRandomElement Molecule where
   genRandom = do
     rId <- nextRandom
-    let smiles = "smiles " ++ toString rId
-        iupac = "iupac " ++ toString rId
+    let smiles = "smiles " <> toText rId
+        iupac = "iupac " <> toText rId
     return $ Molecule (Just rId) smiles iupac
 
 instance GenRandomElement Catalyst where
   genRandom = do
     rId <- nextRandom
-    let smiles = "smiles " ++ toString rId
-        name = Just $ "iupac " ++ toString rId
+    let smiles = "smiles " <> toText rId
+        name = Just $ "iupac " <> toText rId
     return $ Catalyst (Just rId) smiles name
 
 instance GenRandomElement PRODUCT_FROM where

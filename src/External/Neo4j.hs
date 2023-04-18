@@ -18,7 +18,7 @@ import API.Models
         reagents
       ),
   )
-import Control.Monad (forM, forM_, (>=>))
+import Control.Monad (forM, forM_)
 import Control.Monad.Trans.Maybe (MaybeT (MaybeT, runMaybeT))
 import Data.Default ()
 import Data.Map (insert)
@@ -28,7 +28,16 @@ import qualified Data.Text as T
 import Data.UUID (UUID, fromString, nil, toString)
 import Data.UUID.V4 (nextRandom)
 import Database.Bolt (BoltActionT, Node (labels, nodeProps), Path (pathNodes), Pipe, Value (T), at, props, queryP, queryP_, run, (=:))
-import External.Interfaces (AppEnvironment (AppEnvironment, db, logger), Logger (logMsg), Neo4jConn (..), ReactionElement (getCheckExistsQueryText, getCreateQueryProps, getCreateQueryText, getElementId))
+import External.Interfaces
+  ( AppEnvironment (AppEnvironment, db, logger),
+    Neo4jConn (..),
+    ReactionElement
+      ( getCheckExistsQueryText,
+        getCreateQueryProps,
+        getCreateQueryText,
+        getElementId
+      ),
+  )
 
 newtype Neo4jDB = Neo4jDB {boltPipe :: Pipe}
 
@@ -84,7 +93,7 @@ instance Neo4jConn Neo4jDB where
         return rId
       Nothing -> return nil
 
-  getPath appEnv@AppEnvironment {..} id1 id2 = do
+  getPath AppEnvironment {..} id1 id2 = do
     let findShortestPathQuery = do
           records <-
             queryP
@@ -97,7 +106,7 @@ instance Neo4jConn Neo4jDB where
 
         processNodes node = do
           rId <- fromString . T.unpack <$> nodeProps node `at` "id"
-          let nodeLabel = T.unpack . head . labels $ node
+          let nodeLabel = head . labels $ node
               nodeId = fromMaybe nil rId
           return $ PathNode nodeLabel nodeId
 
@@ -140,7 +149,7 @@ instance Neo4jConn Neo4jDB where
           nodes <- forM records $ \record -> record `at` "r"
           forM nodes genReaction
         genReaction node = do
-          rName <- T.unpack <$> nodeProps node `at` "name"
+          rName <- nodeProps node `at` "name"
           rId <- fromString . T.unpack <$> nodeProps node `at` "id"
           return $ Reaction rId rName
 
