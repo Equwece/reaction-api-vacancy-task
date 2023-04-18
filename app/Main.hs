@@ -8,7 +8,7 @@ import Control.Monad (forM_, (>=>))
 import Control.Monad.Except ()
 import Data.Default (Default (def))
 import qualified Data.Text as T
-import Data.Time (getCurrentTime)
+import Data.Time (diffUTCTime, getCurrentTime)
 import Data.UUID
 import Database.Bolt (BoltCfg (host, password, port, user), connect)
 import External.Interfaces (AppEnvironment (..), Logger (Logger, logMsg), Neo4jConn (createReaction, getReactionNodeById))
@@ -36,7 +36,7 @@ main = do
     logMsg logger "App has started..."
     testScript appEnv
 
-testScript :: AppEnvironment -> IO ()
+testScript :: Neo4jConn a => AppEnvironment a -> IO ()
 testScript appEnv@AppEnvironment {..} = do
   let react1 =
         ReactionInput
@@ -59,8 +59,10 @@ testScript appEnv@AppEnvironment {..} = do
                 )
               ]
           }
+  startTime <- getCurrentTime
   setupDB appEnv
-  return ()
+  finishTime <- getCurrentTime
+  logMsg logger ("Work time: " ++ show (diffUTCTime finishTime startTime))
 
 loadSettings :: IO Settings
 loadSettings = do

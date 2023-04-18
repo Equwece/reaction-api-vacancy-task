@@ -26,13 +26,13 @@ import qualified Data.Text as T
 import Data.UUID (UUID, fromString, nil, toString)
 import Data.UUID.V4 (nextRandom)
 import Database.Bolt (BoltActionT, Node (nodeProps), Pipe, Value (T), at, props, queryP, queryP_, run, (=:))
-import External.Interfaces (Neo4jConn (..), ReactionElement (getCheckExistsQueryText, getCreateQueryProps, getCreateQueryText, getElementId))
+import External.Interfaces (AppEnvironment (AppEnvironment, db, logger), Logger (logMsg), Neo4jConn (..), ReactionElement (getCheckExistsQueryText, getCreateQueryProps, getCreateQueryText, getElementId))
 
 newtype Neo4jDB = Neo4jDB {boltPipe :: Pipe}
 
 instance Neo4jConn Neo4jDB where
-  createReaction db (ReactionInput {..}) = do
-    reactionUuid <- createNode db reaction
+  createReaction appEnv@(AppEnvironment {..}) (ReactionInput {..}) = do
+    reactionUuid <- createNode appEnv reaction
     let processReagent = processComponentMolecule queryStr
           where
             queryStr =
@@ -45,7 +45,7 @@ instance Neo4jConn Neo4jDB where
               \CREATE (react)-[r:PRODUCT_FROM {amount: {amount}}]->(mol)"
         processComponentMolecule queryStr (PRODUCT_FROM {..}, moleculeOrId) reactId = do
           maybeMoleculeId <- case moleculeOrId of
-            M molecule -> createNode db molecule
+            M molecule -> createNode appEnv molecule
             MU mId -> return (Just mId)
           case maybeMoleculeId of
             Just moleculeId -> do
@@ -57,7 +57,7 @@ instance Neo4jConn Neo4jDB where
             Nothing -> return ()
         processCatalyst (ACCELERATE {..}, catalystOrId) reactId = do
           maybeCatalystId <- case catalystOrId of
-            C catalyst -> createNode db catalyst
+            C catalyst -> createNode appEnv catalyst
             CU cId -> return (Just cId)
           case maybeCatalystId of
             Just catalystId -> do
@@ -82,10 +82,10 @@ instance Neo4jConn Neo4jDB where
         return rId
       Nothing -> return nil
 
-  createNode db element = do
+  createNode appEnv@(AppEnvironment {..}) element = do
     predefinedId <- case getElementId element of
       Just elId ->
-        runMaybeT $ checkIdExists db element elId
+        runMaybeT $ checkIdExists appEnv element elId
       Nothing -> return Nothing
     newUUID <- nextRandom
     let queryProps = case predefinedId of
@@ -103,7 +103,7 @@ instance Neo4jConn Neo4jDB where
           then return Nothing
           else return $ Just eId
 
-  checkNodeExistsById db element elementId = do
+  checkNodeExistsById (AppEnvironment {..}) element elementId = do
     let checkQuery = do
           records <-
             queryP (getCheckExistsQueryText element) (props ["elId" =: toString elementId])
@@ -113,7 +113,7 @@ instance Neo4jConn Neo4jDB where
       then return False
       else return . head $ checkResult
 
-  getReactionNodeById db reactionId = do
+  getReactionNodeById appEnv@(AppEnvironment {..}) reactionId = do
     let getReactionQuery = do
           records <- queryP "MATCH (r:Reaction) WHERE r.id = {rId} RETURN r" (props ["rId" =: toString reactionId])
           nodes <- forM records $ \record -> record `at` "r"

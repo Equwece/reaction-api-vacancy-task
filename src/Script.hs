@@ -24,13 +24,13 @@ import External.Interfaces (AppEnvironment (AppEnvironment, db), Neo4jConn (crea
 import System.Random (randomIO)
 import Prelude hiding (id)
 
-setupDB :: AppEnvironment -> IO ()
-setupDB AppEnvironment {..} = do
+setupDB :: Neo4jConn a => AppEnvironment a -> IO ()
+setupDB appEnv@(AppEnvironment {..}) = do
   reactions <- forM [1 .. 20] (const genRandom) :: IO [Reaction]
   molecules <- forM [1 .. 20] (const genRandom) :: IO [Molecule]
   catalysts <- forM [1 .. 20] (const genRandom) :: IO [Catalyst]
-  forM_ molecules (createNode db)
-  forM_ catalysts (createNode db)
+  forM_ molecules (createNode appEnv)
+  forM_ catalysts (createNode appEnv)
   let genReactionInput reaction = do
         reactProduct <- pickRandElement molecules []
         reactProductRelation <- genRandom
@@ -48,7 +48,7 @@ setupDB AppEnvironment {..} = do
               reagents = zip reactReagentRelations reactReagentIds,
               catalysts = zip reactCatalystRelations reactCataystIds
             }
-  forM_ reactions (genReactionInput >=> createReaction db)
+  forM_ reactions (genReactionInput >=> createReaction appEnv)
 
 pickRandElements :: Eq a => [a] -> [a] -> IO [a]
 pickRandElements elements filterList = do

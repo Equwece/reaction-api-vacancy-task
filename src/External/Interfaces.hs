@@ -10,19 +10,15 @@ import Data.Text (Text)
 import Data.UUID (UUID)
 import Database.Bolt (Value, props, (=:))
 
-data AppEnvironment where
-  AppEnvironment ::
-    (Neo4jConn b) =>
-    {logger :: Logger, db :: b} ->
-    AppEnvironment
+data AppEnvironment b = AppEnvironment {logger :: Logger, db :: b}
 
 newtype Logger = Logger {logMsg :: String -> IO ()}
 
 class Neo4jConn a where
-  createReaction :: a -> ReactionInput -> IO UUID
-  createNode :: (ReactionElement element) => a -> element -> IO (Maybe UUID)
-  getReactionNodeById :: a -> UUID -> IO (Maybe Reaction)
-  checkNodeExistsById :: (ReactionElement element) => a -> element -> UUID -> IO Bool
+  createReaction :: AppEnvironment a -> ReactionInput -> IO UUID
+  createNode :: (ReactionElement element) => AppEnvironment a -> element -> IO (Maybe UUID)
+  getReactionNodeById :: AppEnvironment a -> UUID -> IO (Maybe Reaction)
+  checkNodeExistsById :: (ReactionElement element) => AppEnvironment a -> element -> UUID -> IO Bool
 
 class ReactionElement b where
   getCreateQueryProps :: b -> Map Text Value
