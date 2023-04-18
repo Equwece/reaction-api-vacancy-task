@@ -1,8 +1,10 @@
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module API.Models where
 
 import Data.UUID (UUID)
+import Prelude hiding (id)
 
 data Molecule = Molecule
   { id :: Maybe UUID,
@@ -53,3 +55,5 @@ data ReactionInput = ReactionInput
   }
   deriving (Show, Eq)
 
+getCatalystId :: Catalyst -> Maybe UUID
+getCatalystId Catalyst {..} = id

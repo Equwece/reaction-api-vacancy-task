@@ -64,7 +64,7 @@ instance Neo4jConn Neo4jDB where
               let createRelationQuery = do
                     queryP_
                       "MATCH (cat:Catalyst),(react:Reaction) WHERE cat.id = {catId} AND react.id = {reactId} \
-                      \CREATE (react)-[r:ACCELERATE {temperature: {temperature}, pressure: {pressure}}]->(cat)"
+                      \CREATE (cat)-[r:ACCELERATE {temperature: {temperature}, pressure: {pressure}}]->(react)"
                       ( props
                           [ "catId" =: toString catalystId,
                             "reactId" =: toString reactId,

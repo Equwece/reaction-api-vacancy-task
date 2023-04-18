@@ -12,6 +12,7 @@ library
     External.Interfaces
     External.Settings
     API.Models
+    Script
 
   build-depends:
     base >=4.15,
@@ -26,6 +27,7 @@ library
     uuid,
     containers,
     transformers,
+    random,
   hs-source-dirs: src
   default-language: Haskell2010
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints 

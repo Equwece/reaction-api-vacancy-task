@@ -14,6 +14,7 @@ import Database.Bolt (BoltCfg (host, password, port, user), connect)
 import External.Interfaces (AppEnvironment (..), Logger (Logger, logMsg), Neo4jConn (createReaction, getReactionNodeById))
 import External.Neo4j (Neo4jDB (Neo4jDB))
 import External.Settings (Settings (..))
+import Script (setupDB)
 import System.Environment (getEnv)
 import System.Log.FastLogger (LogStr, LogType' (LogStdout), ToLogStr (toLogStr), defaultBufSize, withFastLogger)
 
@@ -36,7 +37,7 @@ main = do
     testScript appEnv
 
 testScript :: AppEnvironment -> IO ()
-testScript AppEnvironment {..} = do
+testScript appEnv@AppEnvironment {..} = do
   let react1 =
         ReactionInput
           { reaction = Reaction {name = "react1", id = fromString "b86943c9-264d-4181-bda7-4830fd650527"},
@@ -58,7 +59,7 @@ testScript AppEnvironment {..} = do
                 )
               ]
           }
-  newReactId <- createReaction db react1
+  setupDB appEnv
   return ()
 
 loadSettings :: IO Settings
