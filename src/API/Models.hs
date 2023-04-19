@@ -94,7 +94,11 @@ instance ToSchema ReactionInput
 
 instance FromJSON ReactionInput
 
-data PathNode = PathNode {label :: Text, id :: UUID} deriving (Show, Eq)
+data PathNode = PathNode {label :: Text, id :: UUID} deriving (Generic, Show, Eq)
+
+instance ToSchema PathNode
+
+instance ToJSON PathNode
 
 getCatalystId :: Catalyst -> Maybe UUID
 getCatalystId Catalyst {..} = id

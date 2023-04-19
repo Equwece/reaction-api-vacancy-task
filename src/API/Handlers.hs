@@ -12,13 +12,13 @@
 module API.Handlers (resultServer) where
 
 import API.APISpec (ReactionAPI, RestAPI)
-import API.Models (Reaction, ReactionInput)
+import API.Models (PathNode, Reaction, ReactionInput)
 import Control.Lens ((&), (.~), (?~))
 import Control.Monad.Cont (MonadIO (liftIO))
 import Control.Monad.Except (MonadError (..))
 import Data.OpenApi (HasInfo (info), HasLicense (license), HasServers (servers), HasTitle (title), HasVersion (version), OpenApi)
 import Data.UUID (UUID)
-import External.Interfaces (AppEnvironment (AppEnvironment, logger), Logger (logMsg), Neo4jConn (createReaction, getReactionNodeById))
+import External.Interfaces (AppEnvironment (AppEnvironment, logger), Logger (logMsg), Neo4jConn (createReaction, getPath, getReactionNodeById))
 import Servant
   ( Handler,
     Proxy (..),
@@ -30,7 +30,7 @@ import Servant.OpenApi (HasOpenApi (toOpenApi))
 import Servant.Swagger.UI (SwaggerSchemaUI, swaggerSchemaUIServer)
 
 resultServer :: (Neo4jConn b) => AppEnvironment b -> Server ReactionAPI
-resultServer appEnv = reactionServer appEnv :<|> swaggerServer
+resultServer appEnv = (searchServer appEnv :<|> reactionServer appEnv) :<|> swaggerServer
 
 swaggerServer :: Server (SwaggerSchemaUI api b)
 swaggerServer = swaggerSchemaUIServer openApiSpec
@@ -62,3 +62,11 @@ reactionEntityServer appEnv@(AppEnvironment {..}) resId = getReaction resId
       case react of
         Just reaction -> return reaction
         Nothing -> throwError err404
+
+searchServer :: Neo4jConn a => AppEnvironment a -> (UUID, UUID) -> Handler [[PathNode]]
+searchServer appEnv@AppEnvironment {..} (id1, id2) = do
+  searchResult <- liftIO $ getPath appEnv id1 id2
+  liftIO $ logMsg logger ("Search patch: " <> show id1 <> " " <> show id2)
+  if null searchResult
+    then throwError err404
+    else return searchResult
