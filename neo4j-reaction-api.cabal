@@ -12,6 +12,8 @@ library
     External.Interfaces
     External.Settings
     API.Models
+    API.APISpec
+    API.Handlers
     Script
 
   build-depends:
@@ -28,6 +30,13 @@ library
     containers,
     transformers,
     random,
+    servant,
+    servant-server,
+    servant-openapi3,
+    openapi3,
+    servant-swagger-ui,
+    lens,
+    aeson,
   hs-source-dirs: src
   default-language: Haskell2010
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints 
@@ -46,6 +55,10 @@ executable neo4j-reaction-api
     mtl,
     data-default,
     uuid,
+    servant,
+    servant-server,
+    wai,
+    warp,
     neo4j-reaction-api
   hs-source-dirs:   app
   default-language: Haskell2010

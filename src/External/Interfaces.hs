@@ -4,7 +4,7 @@
 
 module External.Interfaces where
 
-import API.Models (Catalyst (Catalyst, id, name, smiles), Molecule (Molecule, id, iupacName, smiles), Reaction (Reaction, id, name), ReactionInput, PathNode)
+import API.Models (Catalyst (Catalyst, id, name, smiles), Molecule (Molecule, id, iupacName, smiles), PathNode, Reaction (Reaction, id, name), ReactionInput)
 import Data.Map
 import Data.Text (Text)
 import Data.UUID (UUID)
