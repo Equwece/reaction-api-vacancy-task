@@ -18,7 +18,6 @@ import External.Interfaces (AppEnvironment (..), Logger (Logger, logMsg), Neo4jC
 import External.Neo4j (Neo4jDB (Neo4jDB))
 import External.Settings (Settings (..))
 import Network.Wai.Handler.Warp (run)
-import Script (setupDB)
 import Servant (Application, serve)
 import System.Environment (getEnv)
 import System.Log.FastLogger (LogStr, LogType' (LogStdout), ToLogStr (toLogStr), defaultBufSize, withFastLogger)

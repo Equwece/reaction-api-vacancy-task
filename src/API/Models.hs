@@ -4,7 +4,7 @@
 
 module API.Models where
 
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson
 import Data.OpenApi (ToSchema)
 import Data.Text (Text)
 import Data.UUID (UUID)
