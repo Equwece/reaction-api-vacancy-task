@@ -4,21 +4,22 @@ module Main where
 
 import API.APISpec (proxyAPI)
 import API.Handlers (resultServer)
-import API.Models (ACCELERATE (ACCELERATE, catalyst, pressure, reaction, temperature), Catalyst (Catalyst, id, name, smiles), CatalystOrUUID (C), Molecule (Molecule, id, iupacName, smiles), MoleculeOrUUID (M), PRODUCT_FROM (PRODUCT_FROM, amount, inputEntity, outputEntity), REAGENT_IN, Reaction (Reaction, id, name), ReactionInput (ReactionInput, catalysts, product, reaction, reagents))
 import Configuration.Dotenv (defaultConfig, loadFile)
-import Control.Monad (forM_, (>=>))
-import Control.Monad.Except ()
+import Control.Monad (when, (>=>))
 import Data.Default (Default (def))
-import Data.Text (pack)
 import qualified Data.Text as T
-import Data.Time (diffUTCTime, getCurrentTime)
-import Data.UUID (fromString)
+import Data.Time (getCurrentTime)
 import Database.Bolt (BoltCfg (host, password, port, user), connect)
-import External.Interfaces (AppEnvironment (..), Logger (Logger, logMsg), Neo4jConn (createReaction, getPath, getReactionNodeById))
+import External.Interfaces
+  ( AppEnvironment (..),
+    Logger (Logger, logMsg),
+    Neo4jConn,
+  )
 import External.Neo4j (Neo4jDB (Neo4jDB))
 import External.Settings (Settings (..))
 import Network.Wai.Handler.Warp (run)
 import Servant (Application, serve)
+import SetupDB (setupDB)
 import System.Environment (getEnv)
 import System.Log.FastLogger (LogStr, LogType' (LogStdout), ToLogStr (toLogStr), defaultBufSize, withFastLogger)
 
@@ -40,44 +41,12 @@ main = do
     db <- Neo4jDB <$> connect neo4jConnCfg
     let logger = Logger {logMsg = wrapLogMsg >=> fastLogger}
         appEnv = AppEnvironment {..}
+    when (setupDBFlag settings) $ do
+      logMsg logger "Setup Neo4j DB with random data, it may take some time..."
+      setupDB appEnv
+      logMsg logger "DB setup is finished"
     logMsg logger "App has started..."
     run (appPort settings) (reactionApp appEnv)
-
-testScript :: Neo4jConn a => AppEnvironment a -> IO ()
-testScript appEnv@AppEnvironment {..} = do
-  let react1 =
-        ReactionInput
-          { reaction = Reaction {name = pack "react1", id = fromString "b86943c9-264d-4181-bda7-4830fd650527"},
-            reagents =
-              [ ( PRODUCT_FROM {amount = 50.3, inputEntity = Nothing, outputEntity = Nothing},
-                  M (Molecule {id = Nothing, smiles = pack "mol1_smile", iupacName = pack "mol1_iupac"})
-                ),
-                ( PRODUCT_FROM {amount = 40.8, inputEntity = Nothing, outputEntity = Nothing},
-                  M (Molecule {id = Nothing, smiles = pack "mol2_smile", iupacName = pack "mol2_iupac"})
-                )
-              ],
-            product =
-              ( PRODUCT_FROM {amount = 10.8, inputEntity = Nothing, outputEntity = Nothing},
-                M (Molecule {id = Nothing, smiles = pack "mol3_smile", iupacName = pack "mol3_iupac"})
-              ),
-            catalysts =
-              [ ( ACCELERATE {temperature = 5.0, pressure = 6.0, catalyst = Nothing, reaction = Nothing},
-                  C Catalyst {id = Nothing, smiles = pack "cat1_smile", name = Just . pack $ "cat1"}
-                )
-              ]
-          }
-  startTime <- getCurrentTime
-  -- setupDB appEnv
-  let maybeIds = do
-        id1 <- fromString "0636aeb3-56af-4097-8749-ab22e8675248"
-        id2 <- fromString "d633261f-53f4-40cc-b3b1-b128763edad3"
-        Just (id1, id2)
-  case maybeIds of
-    Just (id1, id2) -> do
-      pathNodeList <- getPath appEnv id1 id2
-      logMsg logger (show pathNodeList)
-  finishTime <- getCurrentTime
-  logMsg logger ("Work time: " ++ show (diffUTCTime finishTime startTime))
 
 loadSettings :: IO Settings
 loadSettings = do
@@ -87,9 +56,10 @@ loadSettings = do
   neo4jHost <- getEnv "NEO4J_HOST"
   neo4jPort <- read <$> getEnv "NEO4J_PORT"
   appPort <- read <$> getEnv "APP_PORT"
+  setupDBFlag <- read <$> getEnv "SETUP_DB"
   return Settings {..}
 
 wrapLogMsg :: String -> IO LogStr
 wrapLogMsg msg = do
   currentTime <- getCurrentTime
-  return . toLogStr $ show currentTime <> " " <> msg <> "\n"
+  return . toLogStr $ "[" <> show currentTime <> "] " <> msg <> "\n"

@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Script where
+module SetupDB where
 
 import API.Models
   ( ACCELERATE (ACCELERATE),

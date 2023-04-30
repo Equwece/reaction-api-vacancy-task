@@ -22,7 +22,8 @@ type ReactionAPI = "api" :> "v1" :> (RestAPI :<|> SwaggerAPI)
 type SwaggerAPI =
   SwaggerSchemaUI "docs" "openapi.json"
 
-type RestAPI = "search" :> ReqBody '[JSON] (UUID, UUID) :> Post '[JSON] [[PathNode]] :<|> ReactionsAPI
+type RestAPI = ("search" :> ReqBody '[JSON] (UUID, UUID) :> Post '[JSON] [[PathNode]] 
+    :<|> ReactionsAPI)
 
 type ReactionsAPI =
   "reactions"

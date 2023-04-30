@@ -7,6 +7,7 @@ data Settings = Settings
     neo4jPort :: Int,
     neo4jUser :: Text,
     neo4jPass :: Text,
-    appPort :: Int
+    appPort :: Int,
+    setupDBFlag :: Bool
   }
   deriving (Show, Eq)

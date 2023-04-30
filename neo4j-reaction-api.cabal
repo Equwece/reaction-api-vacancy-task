@@ -14,7 +14,7 @@ library
     API.Models
     API.APISpec
     API.Handlers
-    Script
+    SetupDB
 
   build-depends:
     base >=4.15,
