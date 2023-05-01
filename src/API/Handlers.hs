@@ -9,9 +9,9 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 
-module API.Handlers (resultServer) where
+module API.Handlers (resultServer, reactionApp) where
 
-import API.APISpec (ReactionAPI, RestAPI)
+import API.APISpec (ReactionAPI, RestAPI, proxyAPI)
 import API.Models (PathNode, Reaction, ReactionInput)
 import Control.Lens ((&), (.~), (?~))
 import Control.Monad.Cont (MonadIO (liftIO))
@@ -20,14 +20,19 @@ import Data.OpenApi (HasInfo (info), HasLicense (license), HasServers (servers),
 import Data.UUID (UUID)
 import External.Interfaces (AppEnvironment (AppEnvironment, logger), Logger (logMsg), Neo4jConn (createReaction, getPath, getReactionNodeById))
 import Servant
-  ( Handler,
+  ( Application,
+    Handler,
     Proxy (..),
     Server,
     err404,
+    serve,
     type (:<|>) ((:<|>)),
   )
 import Servant.OpenApi (HasOpenApi (toOpenApi))
 import Servant.Swagger.UI (SwaggerSchemaUI, swaggerSchemaUIServer)
+
+reactionApp :: (Neo4jConn b) => AppEnvironment b -> Application
+reactionApp appEnv = serve proxyAPI (resultServer appEnv)
 
 resultServer :: (Neo4jConn b) => AppEnvironment b -> Server ReactionAPI
 resultServer appEnv = (searchServer appEnv :<|> reactionServer appEnv) :<|> swaggerServer
@@ -48,6 +53,7 @@ reactionServer appEnv@(AppEnvironment {..}) = createReactionServer :<|> reaction
   where
     createReactionServer :: ReactionInput -> Handler UUID
     createReactionServer react = do
+      liftIO $ logMsg logger (show react)
       reactId <- liftIO $ createReaction appEnv react
       liftIO $ logMsg logger ("Create Reaction " <> show reactId)
       return reactId

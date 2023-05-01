@@ -3,7 +3,7 @@
 module Main where
 
 import API.APISpec (proxyAPI)
-import API.Handlers (resultServer)
+import API.Handlers (reactionApp)
 import Configuration.Dotenv (defaultConfig, loadFile)
 import Control.Monad (when, (>=>))
 import Data.Default (Default (def))
@@ -22,9 +22,6 @@ import Servant (Application, serve)
 import SetupDB (setupDB)
 import System.Environment (getEnv)
 import System.Log.FastLogger (LogStr, LogType' (LogStdout), ToLogStr (toLogStr), defaultBufSize, withFastLogger)
-
-reactionApp :: (Neo4jConn b) => AppEnvironment b -> Application
-reactionApp appEnv = serve proxyAPI (resultServer appEnv)
 
 main :: IO ()
 main = do

@@ -1,14 +1,29 @@
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module API.Models where
 
+import Control.Arrow (ArrowChoice (left))
 import Data.Aeson
+import Data.ByteString.Lazy (toStrict)
+import Data.Functor ((<&>))
 import Data.OpenApi (ToSchema)
 import Data.Text (Text)
+import Data.Text.Encoding (decodeUtf8')
 import Data.UUID (UUID)
 import GHC.Generics (Generic)
+import GHC.TypeLits (KnownSymbol)
+import Servant
+import Servant.HTML.Blaze (HTML)
+import Servant.Swagger.UI.Core (SwaggerUiHtml (..))
 import Prelude hiding (id)
 
 data Molecule = Molecule
@@ -21,6 +36,8 @@ data Molecule = Molecule
 instance ToSchema Molecule
 
 instance FromJSON Molecule
+
+instance ToJSON Molecule
 
 data Reaction = Reaction
   { id :: Maybe UUID,
@@ -45,6 +62,8 @@ instance ToSchema Catalyst
 
 instance FromJSON Catalyst
 
+instance ToJSON Catalyst
+
 data PRODUCT_FROM = PRODUCT_FROM
   { amount :: Float,
     inputEntity :: Maybe UUID,
@@ -55,6 +74,8 @@ data PRODUCT_FROM = PRODUCT_FROM
 instance ToSchema PRODUCT_FROM
 
 instance FromJSON PRODUCT_FROM
+
+instance ToJSON PRODUCT_FROM
 
 type REAGENT_IN = PRODUCT_FROM
 
@@ -70,15 +91,21 @@ instance ToSchema ACCELERATE
 
 instance FromJSON ACCELERATE
 
+instance ToJSON ACCELERATE
+
 data MoleculeOrUUID = M Molecule | MU UUID deriving (Generic, Show, Eq)
 
 instance FromJSON MoleculeOrUUID
+
+instance ToJSON MoleculeOrUUID
 
 instance ToSchema MoleculeOrUUID
 
 data CatalystOrUUID = C Catalyst | CU UUID deriving (Generic, Show, Eq)
 
 instance FromJSON CatalystOrUUID
+
+instance ToJSON CatalystOrUUID
 
 instance ToSchema CatalystOrUUID
 
@@ -94,11 +121,21 @@ instance ToSchema ReactionInput
 
 instance FromJSON ReactionInput
 
+instance ToJSON ReactionInput
+
 data PathNode = PathNode {label :: Text, id :: UUID} deriving (Generic, Show, Eq)
 
 instance ToSchema PathNode
 
 instance ToJSON PathNode
 
+instance FromJSON PathNode
+
 getCatalystId :: Catalyst -> Maybe UUID
 getCatalystId Catalyst {..} = id
+
+-- An instance is needed for testing via servant-client
+instance (KnownSymbol dir, HasLink api, Link ~ MkLink api Link, IsElem api api) => MimeUnrender HTML (SwaggerUiHtml dir api) where
+  mimeUnrender _ = left show . eitherText
+    where
+      eitherText byteStr = (decodeUtf8' . toStrict $ byteStr) <&> SwaggerUiHtml
