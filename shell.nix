@@ -1,17 +1,8 @@
 { compiler ? "ghc902" }:
 let
-  bootstrap = import <nixpkgs> {};
+  stableNixpkgs = import ./stableNixpkgs.nix;
 
-  nixpkgs = builtins.fromJSON (builtins.readFile ./nixpkgs.json);
-
-  src = bootstrap.fetchFromGitHub {
-    owner = "NixOS";
-    repo  = "nixpkgs";
-    inherit (nixpkgs) rev sha256;
-  };
-
-
-  myNixPkgs = import (src) {
+  myNixPkgs = import (stableNixpkgs) {
     overlays = [myNixPkgsOverlay];
   };
 
