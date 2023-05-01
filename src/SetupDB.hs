@@ -11,9 +11,10 @@ import API.Models
     Molecule (Molecule, id),
     MoleculeOrUUID (MU),
     PRODUCT_FROM (PRODUCT_FROM),
+    ProductInput (ProductInput),
     Reaction (Reaction),
     ReactionInput (ReactionInput, catalysts, product, reaction, reagents),
-    getCatalystId,
+    getCatalystId, CatalystInput (CatalystInput),
   )
 import Control.Monad (forM, forM_, (>=>))
 import Data.Fixed (mod')
@@ -44,10 +45,10 @@ setupDB appEnv@(AppEnvironment {..}) = do
             reactCataystIds = map (CU . fromMaybe nil . getCatalystId) reactCatalysts
         return $
           ReactionInput
-            { product = (reactProductRelation, MU reactProductId),
+            { product = ProductInput reactProductRelation (MU reactProductId),
               reaction = reaction,
-              reagents = zip reactReagentRelations reactReagentIds,
-              catalysts = zip reactCatalystRelations reactCataystIds
+              reagents = zipWith ProductInput reactReagentRelations reactReagentIds,
+              catalysts = zipWith CatalystInput reactCatalystRelations reactCataystIds
             }
   forM_ reactions (genReactionInput >=> createReaction appEnv)
 

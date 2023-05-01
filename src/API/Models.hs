@@ -111,9 +111,9 @@ instance ToSchema CatalystOrUUID
 
 data ReactionInput = ReactionInput
   { reaction :: Reaction,
-    reagents :: [(REAGENT_IN, MoleculeOrUUID)],
-    product :: (PRODUCT_FROM, MoleculeOrUUID),
-    catalysts :: [(ACCELERATE, CatalystOrUUID)]
+    reagents :: [ReagentInput],
+    product :: ProductInput,
+    catalysts :: [CatalystInput]
   }
   deriving (Generic, Show, Eq)
 
@@ -122,6 +122,32 @@ instance ToSchema ReactionInput
 instance FromJSON ReactionInput
 
 instance ToJSON ReactionInput
+
+type ReagentInput = ProductInput
+
+data ProductInput = ProductInput
+  { relation :: PRODUCT_FROM,
+    molecule :: MoleculeOrUUID
+  }
+  deriving (Generic, Show, Eq)
+
+instance ToSchema ProductInput
+
+instance FromJSON ProductInput
+
+instance ToJSON ProductInput
+
+data CatalystInput = CatalystInput
+  { accelerate :: ACCELERATE,
+    catalyst :: CatalystOrUUID
+  }
+  deriving (Generic, Show, Eq)
+
+instance ToSchema CatalystInput
+
+instance FromJSON CatalystInput
+
+instance ToJSON CatalystInput
 
 data PathNode = PathNode {label :: Text, id :: UUID} deriving (Generic, Show, Eq)
 

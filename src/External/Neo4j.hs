@@ -9,6 +9,7 @@ import API.Models
     MoleculeOrUUID (M, MU),
     PRODUCT_FROM (PRODUCT_FROM, amount, inputEntity, outputEntity),
     PathNode (PathNode),
+    ProductInput (ProductInput),
     Reaction (Reaction),
     ReactionInput
       ( ReactionInput,
@@ -16,7 +17,7 @@ import API.Models
         product,
         reaction,
         reagents
-      ),
+      ), CatalystInput (CatalystInput),
   )
 import Control.Monad (forM, forM_)
 import Control.Monad.Trans.Maybe (MaybeT (MaybeT, runMaybeT))
@@ -64,7 +65,7 @@ instance Neo4jConn Neo4jDB where
             "MATCH (mol:Molecule),(react:Reaction) WHERE mol.id = {molId} AND react.id = {reactId} \
             \CREATE (react)-[r:PRODUCT_FROM {amount: {amount}}]->(mol)"
 
-      processComponentMolecule queryStr (PRODUCT_FROM {..}, moleculeOrId) reactId = do
+      processComponentMolecule queryStr (ProductInput (PRODUCT_FROM {..}) moleculeOrId) reactId = do
         maybeMoleculeId <- case moleculeOrId of
           M molecule -> createNode appEnv molecule
           MU mId -> return (Just mId)
@@ -77,7 +78,7 @@ instance Neo4jConn Neo4jDB where
             run (boltPipe db) createRelationQuery
           Nothing -> return ()
 
-      processCatalyst (ACCELERATE {..}, catalystOrId) reactId = do
+      processCatalyst (CatalystInput (ACCELERATE {..}) catalystOrId) reactId = do
         maybeCatalystId <- case catalystOrId of
           C catalyst -> createNode appEnv catalyst
           CU cId -> return (Just cId)

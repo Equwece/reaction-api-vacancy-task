@@ -53,7 +53,6 @@ reactionServer appEnv@(AppEnvironment {..}) = createReactionServer :<|> reaction
   where
     createReactionServer :: ReactionInput -> Handler UUID
     createReactionServer react = do
-      liftIO $ logMsg logger (show react)
       reactId <- liftIO $ createReaction appEnv react
       liftIO $ logMsg logger ("Create Reaction " <> show reactId)
       return reactId
