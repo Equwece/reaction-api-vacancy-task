@@ -4,16 +4,22 @@
 
 module Main (main) where
 
-import API.APISpec (RestAPI, proxyAPI, restAPI)
-import API.Handlers (reactionApp, resultServer)
+import API.APISpec (proxyAPI)
+import API.Handlers (reactionApp)
 import API.Models
-  ( ACCELERATE (ACCELERATE, catalyst, pressure, reaction, temperature),
+  ( ACCELERATE
+      ( ACCELERATE,
+        catalyst,
+        pressure,
+        reaction,
+        temperature
+      ),
     Catalyst (Catalyst, id, name, smiles),
     CatalystInput (CatalystInput, accelerate, catalyst),
     CatalystOrUUID (C),
     Molecule (Molecule, id, iupacName, smiles),
     MoleculeOrUUID (M),
-    PRODUCT_FROM (PRODUCT_FROM, amount, inputEntity, outputEntity),
+    PRODUCT_FROM (PRODUCT_FROM, amount),
     ProductInput (ProductInput, molecule, relation),
     Reaction (Reaction, id, name),
     ReactionInput
@@ -23,40 +29,34 @@ import API.Models
         reaction,
         reagents
       ),
-    ReagentInput (..),
   )
 import Configuration.Dotenv (defaultConfig, loadFile)
-import Control.Exception (evaluate)
-import Control.Monad (when, (>=>))
 import Data.Default (Default (def))
 import Data.Maybe (fromMaybe)
 import Data.Text (pack)
 import qualified Data.Text as T
-import Data.Time (getCurrentTime, getCurrentTimeZone)
 import Data.UUID (fromString, nil)
-import Database.Bolt (BoltCfg (host, password, port, user), connect)
+import Database.Bolt (BoltCfg (host, password, port, user), connect, query_)
+import qualified Database.Bolt as BL
 import External.Interfaces
   ( AppEnvironment (..),
     Logger (Logger, logMsg),
     Neo4jConn,
   )
-import External.Neo4j (Neo4jDB (Neo4jDB))
+import External.Neo4j (Neo4jDB (Neo4jDB, boltPipe))
 import External.Settings (Settings (..))
-import Network.HTTP.Client (Proxy (Proxy), defaultManagerSettings, newManager)
-import Network.Wai.Handler.Warp (run, testWithApplication)
-import Servant (Application, NoContent (NoContent), err404, serve, type (:<|>) ((:<|>)))
+import Network.HTTP.Client (defaultManagerSettings, newManager)
+import Network.Wai.Handler.Warp (Port, testWithApplication)
+import Servant (type (:<|>) ((:<|>)))
 import Servant.Client
   ( BaseUrl (baseUrlPort),
-    ClientError (FailureResponse),
     client,
     mkClientEnv,
     parseBaseUrl,
     runClientM,
   )
-import Servant.Client.Core.Request (RequestF (requestPath))
-import SetupDB (setupDB)
 import System.Environment (getEnv)
-import System.Log.FastLogger (LogStr, LogType' (LogStdout), ToLogStr (toLogStr), defaultBufSize, withFastLogger)
+import System.Log.FastLogger (LogType' (LogStdout), ToLogStr (toLogStr), defaultBufSize, withFastLogger)
 import Test.HUnit.Lang (assertFailure)
 import Test.Hspec
   ( Spec,
@@ -67,7 +67,6 @@ import Test.Hspec
     runIO,
     shouldBe,
   )
-import Test.QuickCheck (Testable (property))
 
 main :: IO ()
 main = do
@@ -85,7 +84,9 @@ main = do
     let logger = Logger {logMsg = fastLogger . toLogStr}
         appEnv = AppEnvironment {..}
     hspec (spec appEnv)
+    truncateDB appEnv
 
+spec :: AppEnvironment Neo4jDB -> Spec
 spec = apiSpec
 
 loadTestSettings :: IO Settings
@@ -99,16 +100,22 @@ loadTestSettings = do
   setupDBFlag <- read <$> getEnv "SETUP_DB"
   return Settings {..}
 
+withUserApp :: Neo4jConn a1 => AppEnvironment a1 -> (Port -> IO a2) -> IO a2
 withUserApp appEnv = testWithApplication (pure (reactionApp appEnv))
 
+truncateDB :: AppEnvironment Neo4jDB -> IO ()
+truncateDB (AppEnvironment {..}) = do
+  let getReactionQuery = do
+        query_ "MATCH (n) DETACH DELETE (n)"
+  BL.run (boltPipe db) getReactionQuery
+
 apiSpec :: (Neo4jConn b) => AppEnvironment b -> Spec
-apiSpec appEnv@AppEnvironment {..} =
+apiSpec appEnv =
   around (withUserApp appEnv) $ do
-    let ((searchClient :<|> (postReactionClient :<|> getReactionClient)) :<|> swaggerClient) = client proxyAPI
+    let ((searchClient :<|> (postReactionClient :<|> getReactionClient)) :<|> _) = client proxyAPI
     baseUrl <- runIO $ parseBaseUrl "http://localhost"
     manager <- runIO $ newManager defaultManagerSettings
     let clientEnv port = mkClientEnv manager (baseUrl {baseUrlPort = port})
-        getUsersRequest = requestPath
         testReactId = fromMaybe nil $ fromString "b86943c9-264d-4181-bda7-4830fd650527"
 
     describe "POST /api/v1/reactions" $ do
@@ -130,14 +137,16 @@ apiSpec appEnv@AppEnvironment {..} =
           Left _ -> assertFailure "Search Failure"
           Right _ -> return ()
 
+testReaction :: Reaction
 testReaction = Reaction {name = pack "react1", id = fromString "b86943c9-264d-4181-bda7-4830fd650527"}
 
+testReactionInput :: ReactionInput
 testReactionInput =
   ReactionInput
     { reaction = testReaction,
       reagents =
         [ ( ProductInput
-              { relation = PRODUCT_FROM {amount = 50.3, inputEntity = Nothing, outputEntity = Nothing},
+              { relation = PRODUCT_FROM {amount = 50.3},
                 molecule =
                   M
                     ( Molecule
@@ -149,14 +158,14 @@ testReactionInput =
               }
           ),
           ( ProductInput
-              { relation = PRODUCT_FROM {amount = 40.8, inputEntity = Nothing, outputEntity = Nothing},
+              { relation = PRODUCT_FROM {amount = 40.8},
                 molecule = M (Molecule {id = Nothing, smiles = pack "mol2_smile", iupacName = pack "mol2_iupac"})
               }
           )
         ],
       product =
         ( ProductInput
-            { relation = PRODUCT_FROM {amount = 10.8, inputEntity = Nothing, outputEntity = Nothing},
+            { relation = PRODUCT_FROM {amount = 10.8},
               molecule =
                 M
                   ( Molecule

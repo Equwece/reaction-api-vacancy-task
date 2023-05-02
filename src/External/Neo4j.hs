@@ -1,5 +1,4 @@
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -10,7 +9,7 @@ import API.Models
     CatalystInput (CatalystInput),
     CatalystOrUUID (C, CU),
     MoleculeOrUUID (M, MU),
-    PRODUCT_FROM (PRODUCT_FROM, amount, inputEntity, outputEntity),
+    PRODUCT_FROM (PRODUCT_FROM, amount),
     PathNode (PathNode),
     ProductInput (ProductInput),
     Reaction (Reaction),
@@ -23,14 +22,14 @@ import API.Models
       ),
   )
 import Control.Monad (forM, forM_)
-import Control.Monad.State (MonadIO (liftIO), StateT)
+import Control.Monad.State (MonadIO (liftIO))
 import Control.Monad.Trans.Maybe (MaybeT (MaybeT, runMaybeT))
 import Data.Default ()
 import Data.Map (insert)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
-import Data.UUID (UUID, fromString, nil, toString)
+import Data.UUID (UUID, fromString, fromText, nil, toString, toText)
 import Data.UUID.V4 (nextRandom)
 import Database.Bolt (BoltActionT, Node (labels, nodeProps), Path (pathNodes), Pipe, Value (T), at, props, queryP, queryP_, run, (=:))
 import External.Interfaces
@@ -110,11 +109,14 @@ instance Neo4jConn Neo4jDB where
               \WHERE a.id = {aId} AND b.id = {bId}\
               \RETURN paths"
               (props ["aId" =: toString id1, "bId" =: toString id2])
-          pathNodeList <- forM records $ \record -> pathNodes <$> record `at` "paths" :: BoltActionT IO [Node]
-          forM pathNodeList (`forM` processNodes)
+          nodeList <- forM records $ \record -> pathNodes <$> record `at` "paths" :: BoltActionT IO [Node]
+          pathNodeList <- forM nodeList (`forM` processNodes)
+          let minPathLen = minimum $ map length pathNodeList
+              minPathList = filter (\x -> length x == minPathLen) pathNodeList
+          return minPathList
 
         processNodes node = do
-          rId <- fromString . T.unpack <$> nodeProps node `at` "id"
+          rId <- fromText <$> nodeProps node `at` "id"
           let nodeLabel = head . labels $ node
               nodeId = fromMaybe nil rId
           return $ PathNode nodeLabel nodeId
@@ -128,8 +130,8 @@ instance Neo4jConn Neo4jDB where
       Nothing -> return Nothing
     newUUID <- liftIO nextRandom
     let queryProps = case predefinedId of
-          Just elId -> insert (T.pack "id") (T . T.pack . toString $ elId) (getCreateQueryProps element)
-          Nothing -> insert (T.pack "id") (T . T.pack . toString $ newUUID) (getCreateQueryProps element)
+          Just elId -> insert (T.pack "id") (T . toText $ elId) (getCreateQueryProps element)
+          Nothing -> insert (T.pack "id") (T . toText $ newUUID) (getCreateQueryProps element)
         createNodeQuery = do
           records <- queryP (getCreateQueryText element) queryProps
           forM records $ \record -> record `at` "r.id" :: BoltActionT IO Text
@@ -152,14 +154,14 @@ instance Neo4jConn Neo4jDB where
       then return False
       else return . head $ checkResult
 
-  getReactionNodeById appEnv@(AppEnvironment {..}) reactionId = do
+  getReactionNodeById AppEnvironment {..} reactionId = do
     let getReactionQuery = do
           records <- queryP "MATCH (r:Reaction) WHERE r.id = {rId} RETURN r" (props ["rId" =: toString reactionId])
           nodes <- forM records $ \record -> record `at` "r"
           forM nodes genReaction
         genReaction node = do
           rName <- nodeProps node `at` "name"
-          rId <- fromString . T.unpack <$> nodeProps node `at` "id"
+          rId <- fromText <$> nodeProps node `at` "id"
           return $ Reaction rId rName
 
     reactList <- run (boltPipe db) getReactionQuery

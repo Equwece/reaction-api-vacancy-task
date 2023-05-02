@@ -21,7 +21,6 @@ import Control.Monad (forM, forM_, (>=>))
 import Control.Monad.State (StateT (runStateT))
 import Data.Fixed (mod')
 import Data.Maybe (fromMaybe)
-import Data.Text (pack)
 import Data.UUID (nil, toText)
 import Data.UUID.V4 (nextRandom)
 import External.Interfaces (AppEnvironment (AppEnvironment, db), Neo4jConn (createNode, createReaction))
@@ -102,7 +101,7 @@ instance GenRandomElement Catalyst where
 instance GenRandomElement PRODUCT_FROM where
   genRandom = do
     amount <- (`mod'` 100) <$> newRandFloat
-    return $ PRODUCT_FROM amount Nothing Nothing
+    return $ PRODUCT_FROM amount
 
 instance GenRandomElement ACCELERATE where
   genRandom = do

@@ -64,10 +64,8 @@ instance FromJSON Catalyst
 
 instance ToJSON Catalyst
 
-data PRODUCT_FROM = PRODUCT_FROM
-  { amount :: Float,
-    inputEntity :: Maybe UUID,
-    outputEntity :: Maybe UUID
+newtype PRODUCT_FROM = PRODUCT_FROM
+  { amount :: Float
   }
   deriving (Generic, Show, Eq)
 

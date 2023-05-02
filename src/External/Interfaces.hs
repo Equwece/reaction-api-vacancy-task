@@ -5,8 +5,8 @@
 module External.Interfaces where
 
 import API.Models (Catalyst (Catalyst, id, name, smiles), Molecule (Molecule, id, iupacName, smiles), PathNode, Reaction (Reaction, id, name), ReactionInput)
-import Control.Monad.State (StateT (runStateT))
-import Data.Map
+import Control.Monad.State ( StateT )
+import Data.Map ( Map )
 import Data.Text (Text)
 import Data.UUID (UUID)
 import Database.Bolt (Value, props, (=:))

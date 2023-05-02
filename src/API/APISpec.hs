@@ -3,7 +3,7 @@
 
 module API.APISpec where
 
-import API.Models (PathNode (PathNode), Reaction, ReactionInput)
+import API.Models ( PathNode, Reaction, ReactionInput )
 import Data.UUID (UUID)
 import Servant
   ( Capture,
@@ -30,7 +30,7 @@ type RestAPI =
 type ReactionsAPI =
   "reactions"
     :> ( ReqBody '[JSON] ReactionInput :> Post '[JSON] UUID
-           :<|> Capture "userId" UUID :> Get '[JSON] Reaction
+           :<|> Capture "reactionId" UUID :> Get '[JSON] Reaction
        )
 
 proxyAPI :: Proxy ReactionAPI
