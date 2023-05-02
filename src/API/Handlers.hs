@@ -16,9 +16,10 @@ import API.Models (PathNode, Reaction, ReactionInput)
 import Control.Lens ((&), (.~), (?~))
 import Control.Monad.Cont (MonadIO (liftIO))
 import Control.Monad.Except (MonadError (..))
+import Control.Monad.State (StateT (runStateT))
 import Data.OpenApi (HasInfo (info), HasLicense (license), HasServers (servers), HasTitle (title), HasVersion (version), OpenApi)
 import Data.UUID (UUID)
-import External.Interfaces (AppEnvironment (AppEnvironment, logger), Logger (logMsg), Neo4jConn (createReaction, getPath, getReactionNodeById))
+import External.Interfaces
 import Servant
   ( Application,
     Handler,
@@ -31,10 +32,10 @@ import Servant
 import Servant.OpenApi (HasOpenApi (toOpenApi))
 import Servant.Swagger.UI (SwaggerSchemaUI, swaggerSchemaUIServer)
 
-reactionApp :: (Neo4jConn b) => AppEnvironment b -> Application
+reactionApp :: (Neo4jConn a) => AppEnvironment a -> Application
 reactionApp appEnv = serve proxyAPI (resultServer appEnv)
 
-resultServer :: (Neo4jConn b) => AppEnvironment b -> Server ReactionAPI
+resultServer :: (Neo4jConn a) => AppEnvironment a -> Server ReactionAPI
 resultServer appEnv = (searchServer appEnv :<|> reactionServer appEnv) :<|> swaggerServer
 
 swaggerServer :: Server (SwaggerSchemaUI api b)
@@ -48,21 +49,21 @@ openApiSpec =
     & info . license ?~ "LGPL"
     & servers .~ ["http://localhost:8090/api/v1"]
 
-reactionServer :: Neo4jConn a => AppEnvironment a -> (ReactionInput -> Handler UUID) :<|> (UUID -> Handler Reaction)
+reactionServer :: (Neo4jConn a) => AppEnvironment a -> (ReactionInput -> Handler UUID) :<|> (UUID -> Handler Reaction)
 reactionServer appEnv@(AppEnvironment {..}) = createReactionServer :<|> reactionEntityServer appEnv
   where
     createReactionServer :: ReactionInput -> Handler UUID
     createReactionServer react = do
-      reactId <- liftIO $ createReaction appEnv react
+      (reactId, _) <- liftIO $ runStateT (createReaction appEnv react) db
       liftIO $ logMsg logger ("Create Reaction " <> show reactId)
       return reactId
 
-reactionEntityServer :: Neo4jConn a => AppEnvironment a -> UUID -> Handler Reaction
+reactionEntityServer :: (Neo4jConn a) => AppEnvironment a -> UUID -> Handler Reaction
 reactionEntityServer appEnv@(AppEnvironment {..}) resId = getReaction resId
   where
     getReaction :: UUID -> Handler Reaction
     getReaction rId = do
-      react <- liftIO $ getReactionNodeById appEnv rId
+      (react, _) <- liftIO $ runStateT (getReactionNodeById appEnv rId) db
       liftIO $ logMsg logger ("Get Reaction " <> show rId)
       case react of
         Just reaction -> return reaction
@@ -70,7 +71,7 @@ reactionEntityServer appEnv@(AppEnvironment {..}) resId = getReaction resId
 
 searchServer :: Neo4jConn a => AppEnvironment a -> (UUID, UUID) -> Handler [[PathNode]]
 searchServer appEnv@AppEnvironment {..} (id1, id2) = do
-  searchResult <- liftIO $ getPath appEnv id1 id2
+  (searchResult, _) <- liftIO $ runStateT (getPath appEnv id1 id2) db
   liftIO $ logMsg logger ("Search patch: " <> show id1 <> " " <> show id2)
   if null searchResult
     then throwError err404

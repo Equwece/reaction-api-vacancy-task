@@ -7,6 +7,7 @@ module SetupDB where
 import API.Models
   ( ACCELERATE (ACCELERATE),
     Catalyst (Catalyst),
+    CatalystInput (CatalystInput),
     CatalystOrUUID (CU),
     Molecule (Molecule, id),
     MoleculeOrUUID (MU),
@@ -14,9 +15,10 @@ import API.Models
     ProductInput (ProductInput),
     Reaction (Reaction),
     ReactionInput (ReactionInput, catalysts, product, reaction, reagents),
-    getCatalystId, CatalystInput (CatalystInput),
+    getCatalystId,
   )
 import Control.Monad (forM, forM_, (>=>))
+import Control.Monad.State (StateT (runStateT))
 import Data.Fixed (mod')
 import Data.Maybe (fromMaybe)
 import Data.Text (pack)
@@ -31,8 +33,8 @@ setupDB appEnv@(AppEnvironment {..}) = do
   reactions <- forM [1 .. 20] (const genRandom) :: IO [Reaction]
   molecules <- forM [1 .. 20] (const genRandom) :: IO [Molecule]
   catalysts <- forM [1 .. 20] (const genRandom) :: IO [Catalyst]
-  forM_ molecules (createNode appEnv)
-  forM_ catalysts (createNode appEnv)
+  forM_ molecules (\m -> runStateT (createNode appEnv m) db)
+  forM_ catalysts (\m -> runStateT (createNode appEnv m) db)
   let genReactionInput reaction = do
         reactProduct <- pickRandElement molecules []
         reactProductRelation <- genRandom
@@ -50,7 +52,7 @@ setupDB appEnv@(AppEnvironment {..}) = do
               reagents = zipWith ProductInput reactReagentRelations reactReagentIds,
               catalysts = zipWith CatalystInput reactCatalystRelations reactCataystIds
             }
-  forM_ reactions (genReactionInput >=> createReaction appEnv)
+  forM_ reactions (genReactionInput >=> \m -> runStateT (createReaction appEnv m) db)
 
 pickRandElements :: Eq a => [a] -> [a] -> IO [a]
 pickRandElements elements filterList = do

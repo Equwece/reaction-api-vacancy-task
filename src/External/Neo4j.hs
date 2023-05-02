@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -5,6 +7,7 @@ module External.Neo4j where
 
 import API.Models
   ( ACCELERATE (ACCELERATE, catalyst, pressure, reaction, temperature),
+    CatalystInput (CatalystInput),
     CatalystOrUUID (C, CU),
     MoleculeOrUUID (M, MU),
     PRODUCT_FROM (PRODUCT_FROM, amount, inputEntity, outputEntity),
@@ -17,9 +20,10 @@ import API.Models
         product,
         reaction,
         reagents
-      ), CatalystInput (CatalystInput),
+      ),
   )
 import Control.Monad (forM, forM_)
+import Control.Monad.State (MonadIO (liftIO), StateT)
 import Control.Monad.Trans.Maybe (MaybeT (MaybeT, runMaybeT))
 import Data.Default ()
 import Data.Map (insert)
@@ -115,21 +119,21 @@ instance Neo4jConn Neo4jDB where
               nodeId = fromMaybe nil rId
           return $ PathNode nodeLabel nodeId
 
-    run (boltPipe db) findShortestPathQuery
+    liftIO $ run (boltPipe db) findShortestPathQuery
 
   createNode appEnv@(AppEnvironment {..}) element = do
     predefinedId <- case getElementId element of
       Just elId ->
         runMaybeT $ checkIdExists appEnv element elId
       Nothing -> return Nothing
-    newUUID <- nextRandom
+    newUUID <- liftIO nextRandom
     let queryProps = case predefinedId of
           Just elId -> insert (T.pack "id") (T . T.pack . toString $ elId) (getCreateQueryProps element)
           Nothing -> insert (T.pack "id") (T . T.pack . toString $ newUUID) (getCreateQueryProps element)
         createNodeQuery = do
           records <- queryP (getCreateQueryText element) queryProps
           forM records $ \record -> record `at` "r.id" :: BoltActionT IO Text
-    result <- run (boltPipe db) createNodeQuery
+    result <- liftIO $ run (boltPipe db) createNodeQuery
     unpackUUID result
     where
       checkIdExists d e eId = MaybeT $ do
@@ -143,7 +147,7 @@ instance Neo4jConn Neo4jDB where
           records <-
             queryP (getCheckExistsQueryText element) (props ["elId" =: toString elementId])
           forM records $ \record -> record `at` "node_exists" :: BoltActionT IO Bool
-    checkResult <- run (boltPipe db) checkQuery
+    checkResult <- liftIO $ run (boltPipe db) checkQuery
     if null checkResult
       then return False
       else return . head $ checkResult
@@ -163,7 +167,7 @@ instance Neo4jConn Neo4jDB where
       then return Nothing
       else return . Just $ head reactList
 
-unpackUUID :: [Text] -> IO (Maybe UUID)
+unpackUUID :: Monad m => [Text] -> m (Maybe UUID)
 unpackUUID result = do
   if null result
     then return Nothing
