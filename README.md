@@ -1,6 +1,6 @@
 # Reaction API Vacancy Task
 
-RESTfull API over Neo4j database for vacancy task.
+RESTful API over Neo4j database for vacancy task.
 
 ## Getting Started
 
@@ -20,14 +20,14 @@ cd reaction-api-vacancy-task
 
 #### Setup development environment
 
-The project uses Nix to manage dependencies, including development ones. To get terminal session with valid development dependencies in $PATH use:
+The project uses Nix to manage dependencies, including development ones. To get a terminal session with the valid development dependencies in $PATH use:
 ```bash
 nix-shell
 ```
 
 #### Specify env variables
 
-The app needs several environment variables for work. Copy and update `.env.example`:
+The app needs several environment variables to work. Copy and update `.env.example`:
 ```bash
 cp .env.example .env
 ```
